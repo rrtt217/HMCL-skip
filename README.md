@@ -80,7 +80,8 @@ HMCL_JAVA_OPTS="-javaagent:$PWD/dist/region-agent.jar" ./HMCL-3.17.0.362.sh
 
 ### `.exe`（Windows）
 
-`HMCL-3.17.0.362.exe` 是 `HMCLauncher`（3.7.0.1）PE 壳 + 内置 jar，壳里明确支持：
+`HMCL-3.17.0.362.exe` 是 `HMCLauncher`（3.7.0.1）PE 壳（454 144 字节）+ 与 release 完全相同的 jar
+（实测尾部 11 660 275 字节的 sha256 与 `HMCL-3.17.0.362.jar` 一致），壳里明确支持：
 
 - `HMCL_JAVA_HOME`：指定 JRE；
 - `HMCL_JAVA_OPTS`：JVM 参数，最终执行 `java <HMCL_JAVA_OPTS> -jar "<解出来的 jar>"`；
@@ -126,7 +127,10 @@ HMCL-3.17.0.362.exe
 ### 升级注意
 
 `.sh` / `.exe` 自更新时会被新文件整体替换，写进头部的注入会丢；`region-agent.jar` 和包装脚本不受影响，
-重跑一次 `inject-sh.sh`（或继续用环境变量）即可。`.exe` 也不要解包重打——内置 jar 与壳的资源布局变了就跑不起来。
+重跑一次 `inject-sh.sh`（或继续用环境变量）即可。
+
+也不建议去替换 `.exe` 里追加的那份 jar：换了就破坏 HMCL 的自签名（`isOfficial()` 变 false，微软登录失效），
+而这正是 agent 方案要避免的。
 
 ## 判定点与调用点（3.17.0.362 实测，共 9 处）
 
