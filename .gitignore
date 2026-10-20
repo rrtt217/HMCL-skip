@@ -1,0 +1,6 @@
+work/
+build/
+dist/*.jar
+lib/*.jar
+.hmcl/
+*.class
