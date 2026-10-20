@@ -35,12 +35,6 @@ java -javaagent:dist/region-agent.jar=machine -jar HMCL.jar
 java -javaagent:"dist/region-agent.jar=callsites=^org/jackhuang/hmcl/download/HMCLDownloadProvider$;machine" -jar HMCL.jar
 ```
 
-用官方 `.sh` 启动器时，它支持 `HMCL_JAVA_OPTS`（脚本里 `_HMCL_VM_OPTIONS` 直接展开）：
-
-```bash
-HMCL_JAVA_OPTS="-javaagent:$PWD/dist/region-agent.jar=machine" ./HMCL-3.17.0.362.sh
-```
-
 ### 参数
 
 `-javaagent:region-agent.jar=<参数>`，多个参数用 `;` 分隔：
@@ -54,6 +48,85 @@ HMCL_JAVA_OPTS="-javaagent:$PWD/dist/region-agent.jar=machine" ./HMCL-3.17.0.362
 | `dump=<dir>` | 把改写后的 class 落盘，方便 `javap` 核对 |
 
 例：`-javaagent:region-agent.jar=callsites=^org/jackhuang/hmcl/download/;machine;dump=/tmp/dump`
+
+`.sh` 和 `.exe` 发行版都不用改文件——两个启动器都读 `HMCL_JAVA_OPTS`，见下一节。
+
+## 启动方式：.jar / .sh / .exe
+
+### `.jar`
+
+```bash
+java -javaagent:/path/to/region-agent.jar -jar HMCL-3.17.0.362.jar
+```
+
+### `.sh`（Linux / macOS）
+
+`HMCL-3.17.0.362.sh` 是「bash 头部 + zip 尾部」的自解压文件，脚本里会 `exec java $_HMCL_VM_OPTIONS -jar "$_HMCL_PATH"`，
+而 `_HMCL_VM_OPTIONS` 优先取环境变量 `HMCL_JAVA_OPTS`：
+
+```bash
+HMCL_JAVA_OPTS="-javaagent:$PWD/dist/region-agent.jar" ./HMCL-3.17.0.362.sh
+```
+
+想固化进文件（以后直接双击/直接执行），用仓库里的 `inject-sh.sh` 改写头部那一行：
+
+```bash
+./inject-sh.sh HMCL-3.17.0.362.sh dist/region-agent.jar
+# → HMCL-3.17.0.362-agent.sh，头部变成 _HMCL_VM_OPTIONS="-javaagent:<绝对路径> -XX:..."
+```
+
+改的是 zip 之前的前缀，zip 字节不动；脚本会用 `unzip -t` 复核（这种 polyglot 文件本来就有
+`extra bytes at beginning` 警告，只看 `No errors detected`）。
+
+### `.exe`（Windows）
+
+`HMCL-3.17.0.362.exe` 是 `HMCLauncher`（3.7.0.1）PE 壳 + 内置 jar，壳里明确支持：
+
+- `HMCL_JAVA_HOME`：指定 JRE；
+- `HMCL_JAVA_OPTS`：JVM 参数，最终执行 `java <HMCL_JAVA_OPTS> -jar "<解出来的 jar>"`；
+- `HMCL_LAUNCHER_VERBOSE_OUTPUT`：打印启动器日志（排查时有用）。
+
+所以只要在启动前设置环境变量，**不用改 exe**：
+
+```bat
+set HMCL_JAVA_OPTS=-javaagent:C:\HMCL
+egion-agent.jar
+HMCL-3.17.0.362.exe
+```
+
+或者用 `examples/run-hmcl.bat`（放在 exe 同目录，双击即可）：
+
+```bat
+@echo off
+set "HMCL_JAVA_OPTS=-javaagent:%~dp0region-agent.jar"
+start "" "%~dp0HMCL-3.17.0.362.exe"
+```
+
+两个坑：
+
+- `HMCL_JAVA_OPTS` 是**替换**默认值，不是追加。`.sh` 的默认是
+  `-XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=15 -XX:G1PeriodicGCInterval=...`，
+  `.exe` 的默认是 ` -Xmx1G -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=15`；想保留就一并写进去。
+- 启动器按空格切分参数，**agent 路径别带空格**（`C:\Program Files\...` 会断）。
+
+### 兜底：`JAVA_TOOL_OPTIONS`
+
+任何 JVM 都会读，适合启动器不认参数的情况（会多一行 `Picked up JAVA_TOOL_OPTIONS: ...`）：
+
+```bash
+JAVA_TOOL_OPTIONS="-javaagent:/path/to/region-agent.jar" ./HMCL-3.17.0.362.sh
+```
+
+```bat
+set JAVA_TOOL_OPTIONS=-javaagent:C:\HMCL
+egion-agent.jar
+HMCL-3.17.0.362.exe
+```
+
+### 升级注意
+
+`.sh` / `.exe` 自更新时会被新文件整体替换，写进头部的注入会丢；`region-agent.jar` 和包装脚本不受影响，
+重跑一次 `inject-sh.sh`（或继续用环境变量）即可。`.exe` 也不要解包重打——内置 jar 与壳的资源布局变了就跑不起来。
 
 ## 判定点与调用点（3.17.0.362 实测，共 9 处）
 
