@@ -90,8 +90,7 @@ HMCL_JAVA_OPTS="-javaagent:$PWD/dist/region-agent.jar" ./HMCL-3.17.0.362.sh
 所以只要在启动前设置环境变量，**不用改 exe**：
 
 ```bat
-set HMCL_JAVA_OPTS=-javaagent:C:\HMCL
-egion-agent.jar
+set HMCL_JAVA_OPTS=-javaagent:C:\HMCL\region-agent.jar
 HMCL-3.17.0.362.exe
 ```
 
@@ -119,8 +118,7 @@ JAVA_TOOL_OPTIONS="-javaagent:/path/to/region-agent.jar" ./HMCL-3.17.0.362.sh
 ```
 
 ```bat
-set JAVA_TOOL_OPTIONS=-javaagent:C:\HMCL
-egion-agent.jar
+set JAVA_TOOL_OPTIONS=-javaagent:C:\HMCL\region-agent.jar
 HMCL-3.17.0.362.exe
 ```
 
